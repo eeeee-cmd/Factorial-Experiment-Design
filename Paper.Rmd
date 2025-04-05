@@ -1,10 +1,10 @@
 ---
-title: "Assignment 4"
-subtitle: "Factorial Experiment Design"
+title: "Assignment 4 - Factorial Experiment Design"
 author: "Deyi Kong"
 date: 2025-04-10
 output: 
   pdf_document:
+    toc: true
     number_sections: true
 thanks: 'Code available at: [https://github.com/eeeee-cmd/Factorial-Experiment-Design/].'
 ---
@@ -14,16 +14,18 @@ library(tidyverse)
 library(dplyr)
 library(FrF2)
 library(ggplot2)
+library(gridExtra)
 library(BsMD)
 ```
-# Description of the design
 
+\newpage
+# Description of the design
 ## Objective
 This experiment aims to evaluate how different study methods (Active Recall vs. Passive Reading), environmental conditions (Quiet vs. Noisy), and study duration (Short vs. Long) affect learning performance, measured by scores. By implementing a structured factorial design, we ensure that all individual and potential interactions between the factors are examined systematically.
 
 ## Factorial Experiment Design
 
-This experiment design utilizes a full factorial $2^3$ experimental design with three factors (each having two levels):
+This experiment design utilizes a full factorial $2^3$ experimental design (three factors each two levels):
 
 1.  `Method` (Active Recall vs. Passive Reading)
 
@@ -31,9 +33,13 @@ This experiment design utilizes a full factorial $2^3$ experimental design with 
 
 3.  `Time` (Short vs. Long)
 
-`Test scores` (0–100) serves as the response variable, quantifying learning retention and application.
+`Test scores` (0–100) is the response variable, quantifying learning retention and application.
 
 Since there are 3 factors with 2 levels, a full factorial design results in 8 unique conditions. To reduce variability and improve statistical reliability, this experiment replicates each combination of the factors 5 times. All possible factor-level combinations are included multiple times, making this a replicated full factorial design. This design captures not only the individual impact of each factor but also how they interact with each other.
+
+To conduct this factorial experiment, we first collected data from university students fitting one of the eight combinations in this $2^3$ factorial design using a short survey. The survey asked participants to self-report their typical study method (Active Recall or Passive Reading), usual study environment (Quiet or Noisy), and average study duration before a recent test (Short or Long). Additionally, students provided their most recent test score where they applied that study pattern.
+
+To complete the design with five replicates per condition, we simulated additional data points for each combination based on the observed scores, maintaining reasonable variation and patterns consistent with the original data. We used these initial eight scores to estimate reasonable means and then generated additional scores using normally distributed random values with a standard deviation of 2. This approach allowed us to create a balanced dataset of 40 observations while preserving the structure of a replicated factorial experiment. Although part of the dataset is simulated, the analysis reflects how the design and interpretation would proceed in a real experimental setting.
 
 ## Expected Outcomes
 This factorial experiment aims to gain a deeper understanding of how different study strategies and environmental conditions influence learning performance. Specifically, understanding whether Active Recall leads to higher scores than Passive Reading, how a noisy environment affects learning outcomes, and whether longer study duration significantly improve performance. Additionally, we hope to identify interactions between these factors, such as whether Active Recall mitigates the negative effects of noise or if longer study time benefits one method more than the other. Ultimately, the goal is to help optimize study strategies for better learning outcomes.
@@ -82,6 +88,35 @@ head(df)
 write.csv(df,"data/num_data.csv")
 ```
 
+```{r, include=FALSE}
+# Histogram of scores
+ggplot(df, aes(x = Score)) +
+  geom_histogram(binwidth = 6, fill = "steelblue", color = "white") +
+  theme_minimal() +
+  ggtitle("Distribution of Test Scores")
+```
+
+```{r, include=FALSE}
+plot1 <- ggplot(data, aes(x = Method, y = Score, fill = Method)) +
+  geom_boxplot() +
+  theme_minimal() +
+  ggtitle("Scores by Study Method")
+
+plot2 <- ggplot(data, aes(x = Environment, y = Score, fill = Environment)) +
+  geom_boxplot() +
+  theme_minimal() +
+  ggtitle("Scores by Study Environment")
+
+plot3 <- ggplot(data, aes(x = Time, y = Score, fill = Time)) +
+  geom_boxplot() +
+  theme_minimal() +
+  ggtitle("Scores by Study Duration")
+
+# Arrange the plots in one row
+grid.arrange(plot1, plot2, plot3, nrow = 1, widths = c(0.6, 0.6, 0.6))
+```
+
+
 Three way ANOVA results for the effects of study method, environment, time, and their interactions on test scores. All of the main effects are statistical significance ($\alpha$ = 0.05) such that the study duration `Time` (F = 492.595) has the largest effect, which means longer study duration greatly improves the grade. The main effect of `Method` (F = 23.252) and `Environment` (F = 86.807) are also substantial, which means that active study is generally more effective than passive reading and a quiet environment enhances performance.
 
 The two-way interactions of Method with Environment (F = 5.010, p = 0.0323) and Method with Time (F = 4.497, p = 0.0418) suggest that the study method slightly depends on the study environment and duration. However, the interaction between Environment and Time (F = 1.084, p = 0.3055) is not significant, so that we cannot conclude the effect of study time depend on the study environment. 
@@ -103,10 +138,9 @@ anova_table <- as.data.frame(summary(anova_model)[[1]])%>%
   )
 knitr::kable (anova_table)
 ```
-The model has strong explanatory power such that 95.12% of the variation in the response variable (`score`) being explained by the factors and their interactions. The Method, Environment, and Time factors all have highly significant main effects, and the three-way interaction between these factors is also significant.
+The model has strong explanatory power such that 95.12% of the variation in the response variable (`score`) being explained by all the factors and their interactions. The adjusted R-squared tells 94.05% of the variance in the outcome is explained by significant predictors. The Method, Environment, and Time factors all have highly significant main effects, and the three-way interaction between these factors is also significant.
 
 ```{r, include=FALSE}
-
 model <- lm(Score ~ Method * Environment * Time, data=df)
 summary(model)
 ```
@@ -120,9 +154,9 @@ knitr::kable(ci)
 ```
 \newpage
 
-This half-normal plot displays the absolute effects of various factors and their interactions from a test score study, allowing us to assess which effects are most significant. The main effects (Time, Environment, Method) are more influential than their interactions in this study. Time is the dominant factor affecting test scores. While interaction effects exist, they are relatively small compared to the main effects. The study might benefit from focusing more on the individual factors rather than their complex interactions
+Figure 1 displays the absolute effects of various factors and their interactions from a test score study, allowing us to assess which effects are most significant. The main effects (Time, Environment, Method) are more influential than their interactions in this study. Time is the dominant factor affecting test scores. While interaction effects exist, they are relatively small compared to the main effects. The study might benefit from focusing more on the individual factors rather than their complex interactions
 
-```{r fig-dan, fig.cap = "Half-Normal plot of effects from test score study.", fig.width=5, fig.height=4}
+```{r fig-dan, fig.cap = "Half-Normal plot of effects from test score study. Points that lie furthest from the origin(`time`) represent the most influential factors in predicting test performance. Interaction terms like Method:Environment:Time and Method:Environment also show some effects, whereas Environment:Time has the smallest contribution. The plot helps visually distinguish significant effects from those likely due to random variation."}
 #| echo: false
 
 DanielPlot(model, half=T, main="Half-Normal plot of effects from test score study")
