@@ -1,0 +1,143 @@
+---
+title: "Assignment 4"
+subtitle: "Factorial Experiment Design"
+author: "Deyi Kong"
+date: 2025-04-10
+output: 
+  pdf_document:
+    number_sections: true
+thanks: 'Code available at: [https://github.com/eeeee-cmd/Factorial-Experiment-Design/].'
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(FrF2)
+library(ggplot2)
+library(BsMD)
+```
+# Description of the design
+
+## Objective
+This experiment aims to evaluate how different study methods (Active Recall vs. Passive Reading), environmental conditions (Quiet vs. Noisy), and study duration (Short vs. Long) affect learning performance, measured by scores. By implementing a structured factorial design, we ensure that all individual and potential interactions between the factors are examined systematically.
+
+## Factorial Experiment Design
+
+This experiment design utilizes a full factorial $2^3$ experimental design with three factors (each having two levels):
+
+1.  `Method` (Active Recall vs. Passive Reading)
+
+2.  `Environment` (Quiet vs. Noisy)
+
+3.  `Time` (Short vs. Long)
+
+`Test scores` (0–100) serves as the response variable, quantifying learning retention and application.
+
+Since there are 3 factors with 2 levels, a full factorial design results in 8 unique conditions. To reduce variability and improve statistical reliability, this experiment replicates each combination of the factors 5 times. All possible factor-level combinations are included multiple times, making this a replicated full factorial design. This design captures not only the individual impact of each factor but also how they interact with each other.
+
+## Expected Outcomes
+This factorial experiment aims to gain a deeper understanding of how different study strategies and environmental conditions influence learning performance. Specifically, understanding whether Active Recall leads to higher scores than Passive Reading, how a noisy environment affects learning outcomes, and whether longer study duration significantly improve performance. Additionally, we hope to identify interactions between these factors, such as whether Active Recall mitigates the negative effects of noise or if longer study time benefits one method more than the other. Ultimately, the goal is to help optimize study strategies for better learning outcomes.
+
+\newpage
+
+# Analysis of the data
+
+```{r, include=FALSE}
+
+# Set seed for reproducibility
+set.seed(305)
+
+# Level of Factors
+method <- rep(c("ActiveRecall", "PassiveReading"), each=20)
+environment <- rep(c("Quiet", "Noisy"), each=10)
+time <- rep(c("Short", "Long"), each=5, times=2)
+
+# Simulate Scores with Effects
+scores <- c(
+  rnorm(5, mean=65, sd=2),  # ActiveRecall, Quiet, Short
+  rnorm(5, mean=85, sd=2),  # ActiveRecall, Quiet, Long
+  rnorm(5, mean=60, sd=2),  # ActiveRecall, Noisy, Short
+  rnorm(5, mean=75, sd=2),  # ActiveRecall, Noisy, Long
+  rnorm(5, mean=65, sd=2),  # PassiveReading, Quiet, Short
+  rnorm(5, mean=78, sd=2),  # PassiveReading, Quiet, Long
+  rnorm(5, mean=57, sd=2),  # PassiveReading, Noisy, Short
+  rnorm(5, mean=72, sd=2)   # PassiveReading, Noisy, Long
+)
+
+# Create Data Frame
+data <- data.frame(Method=method, Environment=environment, Time=time, Score=round(scores,2))
+
+write.csv(data,"data/raw_data.csv")
+
+# Convert categorical variables to numeric contrasts (-1, +1)
+df <- data %>%
+  mutate(
+    Method = ifelse(Method == "ActiveRecall", 1, -1),
+    Environment = ifelse(Environment == "Quiet", 1, -1),
+    Time = ifelse(Time == "Long", 1, -1)
+  )
+
+head(df)
+
+write.csv(df,"data/num_data.csv")
+```
+
+Three way ANOVA results for the effects of study method, environment, time, and their interactions on test scores. All of the main effects are statistical significance ($\alpha$ = 0.05) such that the study duration `Time` (F = 492.595) has the largest effect, which means longer study duration greatly improves the grade. The main effect of `Method` (F = 23.252) and `Environment` (F = 86.807) are also substantial, which means that active study is generally more effective than passive reading and a quiet environment enhances performance.
+
+The two-way interactions of Method with Environment (F = 5.010, p = 0.0323) and Method with Time (F = 4.497, p = 0.0418) suggest that the study method slightly depends on the study environment and duration. However, the interaction between Environment and Time (F = 1.084, p = 0.3055) is not significant, so that we cannot conclude the effect of study time depend on the study environment. 
+
+The three-way interaction (F = 10.674, p = 0.0026) shows that the impact of study method on performance varies depending on both the study environment and duration, with active recall showing the greatest advantage in quiet, long study sessions compared to noisy or short ones. Overall, these results highlight the importance of both study strategy and environmental conditions in optimizing learning.
+
+
+```{r tab-anova, tab.cap = "Three way ANOVA results for the effects of study method, environment, time, and their interactions on test scores."}
+#| echo: false
+
+# Fit three way ANOVA
+anova_model <- aov(Score ~ Method * Environment * Time, data=df)
+anova_table <- as.data.frame(summary(anova_model)[[1]])%>%
+  mutate(
+    `Sum Sq` = round(`Sum Sq`, 1),
+    `Mean Sq` = round(`Mean Sq`, 2),
+    `F value` = round(`F value`, 3),
+    `Pr(>F)` = round(`Pr(>F)`, 3)
+  )
+knitr::kable (anova_table)
+```
+The model has strong explanatory power such that 95.12% of the variation in the response variable (`score`) being explained by the factors and their interactions. The Method, Environment, and Time factors all have highly significant main effects, and the three-way interaction between these factors is also significant.
+
+```{r, include=FALSE}
+
+model <- lm(Score ~ Method * Environment * Time, data=df)
+summary(model)
+```
+
+```{r tab-ci, tab.cap = "Confidence Intervals for true values of effects"}
+#| echo: false
+
+# Compute 95% confidence intervals
+ci <- round(confint(model, level = 0.95),2)
+knitr::kable(ci) 
+```
+\newpage
+
+This half-normal plot displays the absolute effects of various factors and their interactions from a test score study, allowing us to assess which effects are most significant. The main effects (Time, Environment, Method) are more influential than their interactions in this study. Time is the dominant factor affecting test scores. While interaction effects exist, they are relatively small compared to the main effects. The study might benefit from focusing more on the individual factors rather than their complex interactions
+
+```{r fig-dan, fig.cap = "Half-Normal plot of effects from test score study.", fig.width=5, fig.height=4}
+#| echo: false
+
+DanielPlot(model, half=T, main="Half-Normal plot of effects from test score study")
+```
+
+```{r, include=FALSE}
+#| echo: false
+
+LenthPlot(model, main="Lenth plot of effects from test score study")
+```
+
+
+# Conclusion
+
+This factorial experiment demonstrated that study method, environment, and study duration significantly influence learning outcomes. The study duration had the most positive effect on test scores, suggesting that longer study sessions lead to better performance. Quiet environments and active recall strategies also contributed positively to learning outcomes.
+The two-way interaction between Method and Environment as well as the interaction between Method and Time was statistically significant, suggesting that the effectiveness of active recall depends on context. In addition, the three-way interaction was also significant, suggesting that active recall works best during long, quiet study sessions.
+
+Overall, these findings support the adoption of active recall techniques in quiet settings with sufficient study durations. Despite the interaction effects, the main takeaway is the dominant role of individual factors, especially time, in shaping academic performance. This analysis offers practical recommendations for students to improve study effectiveness through intentional choices in strategy, setting, and time management.
